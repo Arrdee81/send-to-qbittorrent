@@ -119,3 +119,53 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     loginTabs.delete(tabId);
   }
 });
+
+// --- Intercept .torrent responses (incl. JS-image buttons / extensionless
+// /download/ links) BEFORE they hit disk, and route them to qBittorrent. ---
+function looksLikeTorrent(details) {
+  const h = details.responseHeaders || [];
+  const get = (n) => (h.find((x) => x.name.toLowerCase() === n) || {}).value || "";
+  const ct = get("content-type").toLowerCase();
+  const cd = get("content-disposition").toLowerCase();
+  return ct.includes("application/x-bittorrent")
+      || /\.torrent(\?|$)/i.test(details.url)
+      || /\.torrent\b/.test(cd);
+}
+
+async function addTorrentFile(blob, credentials) {
+  const { url } = credentials;
+  const form = new FormData();
+  form.append("torrents", blob, "download.torrent");
+  return fetch(`${url}/api/v2/torrents/add`, { method: "POST", body: form });
+}
+
+async function sendUrlToQbit(torrentUrl) {
+  try {
+    const credentials = await getCredentials();
+    await login();
+    // Refetch with the page's cookies so private-tracker passkeys survive,
+    // then upload the actual file (MV2 background fetch = no CORS).
+    const res = await fetch(torrentUrl, { credentials: "include" });
+    const blob = await res.blob();
+    const addResp = await addTorrentFile(blob, credentials);
+    if (addResp.status === 200) {
+      browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+        if (tabs[0]) browser.tabs.sendMessage(tabs[0].id, { action: "torrentAdded" });
+      });
+    }
+  } catch (e) {
+    console.error("Send to qBittorrent: send failed", e);
+  }
+}
+
+browser.webRequest.onHeadersReceived.addListener(
+  (details) => {
+    if (details.tabId < 0) return {};        // ignore our own background fetch
+    if (!looksLikeTorrent(details)) return {};
+    console.log("Send to qBittorrent: intercepting", details.url);
+    sendUrlToQbit(details.url);
+    return { cancel: true };                  // stop it from downloading to disk
+  },
+  { urls: ["<all_urls>"] },
+  ["blocking", "responseHeaders"]
+);

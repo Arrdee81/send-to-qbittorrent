@@ -6,6 +6,8 @@
   "author": "https://github.com/frogmech",
   "permissions": [
     "contextMenus",
+    "webRequest",
+    "webRequestBlocking",
     "storage",
     "https://*/*",
     "http://*/*"
