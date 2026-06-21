@@ -72,9 +72,17 @@ browser.runtime.onInstalled.addListener(() => {
 
 browser.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "sendToQbit") {
-    const credentials = await getCredentials();
-    await login();
-    addTorrent(info.linkUrl, credentials)
+    if (info.linkUrl && info.linkUrl.startsWith("magnet:")) {
+      // Magnets can't be fetched — hand the URI to qBittorrent directly.
+      const credentials = await getCredentials();
+      await login();
+      addTorrent(info.linkUrl, credentials);
+    } else {
+      // http(s) .torrent link: fetch it with the page's cookies and upload the
+      // file, so login/passkey-gated links work (qBit fetching the bare URL
+      // itself would fail — the legacy addTorrent(urls=) path).
+      sendUrlToQbit(info.linkUrl);
+    }
   }
 });
 
