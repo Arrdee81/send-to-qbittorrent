@@ -17,19 +17,30 @@ async function login() {
     return response.text();
 }
 
+// Tell the active tab whether the send landed (drives the 👍/👎 toast).
+function notifyResult(ok, message) {
+  browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+    if (tabs[0]) browser.tabs.sendMessage(tabs[0].id, { action: "qbResult", ok, message });
+  });
+}
+
 async function addTorrent(urls, credentials) {
     const { url } = credentials;
-    const response = await fetch(`${url}/api/v2/torrents/add`, {
-        method: "POST",
-        body: new URLSearchParams({urls}),
-    });
-    if (response.status === 200) {
-      browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-        if (tabs.length === 0) return;
-        browser.tabs.sendMessage(tabs[0].id, {
-          action: "torrentAdded"
-        });
+    try {
+      const response = await fetch(`${url}/api/v2/torrents/add`, {
+          method: "POST",
+          body: new URLSearchParams({urls}),
       });
+      const body = (await response.text()).trim();
+      // qBit returns 200 + "Ok." on success; "Fails." or non-200 means it didn't land.
+      if (response.ok && body !== "Fails.") {
+        notifyResult(true, "Sent to qBittorrent");
+      } else {
+        notifyResult(false, `qBittorrent rejected it (${response.status})`);
+      }
+    } catch (e) {
+      console.error("Send to qBittorrent: add failed", e);
+      notifyResult(false, "Can't reach qBittorrent");
     }
 }
 
@@ -150,19 +161,24 @@ async function addTorrentFile(blob, credentials) {
 async function sendUrlToQbit(torrentUrl) {
   try {
     const credentials = await getCredentials();
+    // Attempt login for the SID cookie, but don't gate on it — qBit may have
+    // auth-bypass for localhost/whitelisted IPs, where login returns "Fails."
+    // yet the add still lands. The add response is the real success test.
     await login();
     // Refetch with the page's cookies so private-tracker passkeys survive,
     // then upload the actual file (MV2 background fetch = no CORS).
     const res = await fetch(torrentUrl, { credentials: "include" });
     const blob = await res.blob();
     const addResp = await addTorrentFile(blob, credentials);
-    if (addResp.status === 200) {
-      browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-        if (tabs[0]) browser.tabs.sendMessage(tabs[0].id, { action: "torrentAdded" });
-      });
+    const body = (await addResp.text()).trim();
+    if (addResp.ok && body !== "Fails.") {
+      notifyResult(true, "Sent to qBittorrent");
+    } else {
+      notifyResult(false, `qBittorrent rejected it (${addResp.status})`);
     }
   } catch (e) {
     console.error("Send to qBittorrent: send failed", e);
+    notifyResult(false, "Can't reach qBittorrent");
   }
 }
 
