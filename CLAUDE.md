@@ -10,7 +10,7 @@
 -->
 
 ## Source of truth
-The homelab reference is **split**: each repo has its own `.claude/rules/<repo>-reference.md`
+The homelab reference is **split**: each repo has its own `<repo>-reference.md`
 slice (auto-loads when you work in that repo), and the cross-cutting **spine** lives in the
 `homelab-reference` repo's `homelab-reference.md` — HARD STOPS, hardware/network, conventions,
 the DNS cluster, home automation, the master to-do list, load-bearing pins, cross-cutting
@@ -147,7 +147,7 @@ with date + method; keep inferences marked ⚠.
 At the end of any chat that changed homelab state, update the **right place** — in place,
 show me the diff, commit/push on my approval, briefly list what changed:
 - a **stack-specific** change (a container, a version-with-reason, a stack quirk or lesson) →
-  that repo's `.claude/rules/<repo>-reference.md` slice;
+  that repo's `<repo>-reference.md` slice;
 - a **cross-cutting** change (host/network, a convention, a HARD STOP, a backlog item, a
   cross-cutting lesson) → the central `homelab-reference.md` spine;
 - a change to **these instructions** (this `CLAUDE.md`) → edit `homelab-reference/CLAUDE.md`
