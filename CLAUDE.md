@@ -16,12 +16,18 @@ slice (auto-loads when you work in that repo), and the cross-cutting **spine** l
 the DNS cluster, home automation, the master to-do list, load-bearing pins, cross-cutting
 lessons, and a repo index.
 
-At the start of any session that touches homelab state: your repo's slice auto-loads — and you
-still **READ THE WHOLE FUCKING THING that is the central `homelab-reference.md`** (the spine; it
-does NOT auto-load from other repos — reach it via the sibling `homelab-reference` checkout).
-Read the slice + spine **as one connected document**: the slice, the conventions, the HARD STOPS,
-and the backlog must agree. If they don't, that is a defect you fix, not a fact you repeat (see
-Internal Consistency & Safety).
+**Repos are the source of truth** (changed 2026-07-05; was "always read the whole spine"):
+each repo's slice is authoritative for its stack, and **live checks beat any doc** for state —
+ssh, `docker ps`, `pvesh`, and the read-only MCP eyes (HA, Unraid; see `claude/claude-reference.md`).
+The spine is the **rules + fallback layer**, not the first consult:
+
+- **ALWAYS still read the spine's HARD STOPS before acting on homelab state** — they're short,
+  they're the never-do list, and no slice carries all of them. This part is NOT optional.
+- Consult the rest of the spine only when: the work is cross-cutting (network/hardware/
+  conventions/backlog), a slice seems to conflict with something, or a fact can't be verified
+  live or found in the slice. (It does NOT auto-load — sibling `homelab-reference` checkout.)
+- Slice vs spine disagreement = a defect: verify live, fix the stale one (see Internal
+  Consistency & Safety).
 
 Treat all of it as authoritative-but-verify (Doc-trust rule). If a chat contradicts the doc, the
 more recent reality wins — the doc is now stale and must be updated (see Maintenance).
