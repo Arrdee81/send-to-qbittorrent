@@ -55,12 +55,18 @@
   // Left-click-to-send for magnet links (opt-in).
   const { leftClickSend } = await browser.storage.local.get('leftClickSend');
   if (leftClickSend) {
+    // A nonce rides along because storage.onChanged only fires when the value
+    // CHANGES — without it, re-clicking the same magnet after cancelling the
+    // category prompt would be a silent no-op.
+    let clicks = 0;
     document.addEventListener("click", (e) => {
       const magnet = e.target.closest('a[href^="magnet:"]');
       if (magnet) {
         e.preventDefault();
         e.stopPropagation();
-        browser.storage.local.set({ magnetLink: magnet.href });
+        browser.storage.local.set({
+          magnetLink: { href: magnet.href, nonce: `${Date.now()}-${++clicks}` },
+        });
       }
     });
   }

@@ -34,6 +34,77 @@ function notifyResult(ok, message) {
   }).catch(() => {});
 }
 
+// --- Category prompt: EVERY add stops here for an explicit category choice.
+// 🚫 NEVER add an entry point that skips askCategory() — an uncategorised VR
+// torrent lands in the default save path and is irreversibly transcoded before
+// anyone notices. Closing the window sends nothing at all (fail closed). ---
+const pendingAdds = new Map();
+let pendingSeq = 0;
+
+// Something short and human for the picker to show: the magnet's display name,
+// else the filename from the URL, else the raw target.
+function describeTarget(target) {
+  try {
+    if (target.startsWith("magnet:")) {
+      const dn = target.match(/[?&]dn=([^&]*)/);
+      if (dn) return decodeURIComponent(dn[1].replace(/\+/g, " "));
+      return magnetHash(target) || target;
+    }
+    const path = new URL(target).pathname;
+    return decodeURIComponent(path.split("/").filter(Boolean).pop() || target);
+  } catch (e) {
+    return target;
+  }
+}
+
+// { name: { name, savePath }, ... } — the live list, so the picker can never
+// offer a category qBittorrent doesn't actually have a save path for.
+async function getCategories() {
+  const { url } = await getCredentials();
+  await login();
+  const response = await fetch(`${url}/api/v2/torrents/categories`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+// Resolves to the chosen category ("" = deliberately uncategorised), or null if
+// the window was closed without choosing.
+async function askCategory(target) {
+  const id = String(++pendingSeq);
+  const query = new URLSearchParams({ id, label: describeTarget(target) });
+  let win;
+  try {
+    win = await browser.windows.create({
+      url: browser.runtime.getURL(`picker.html?${query}`),
+      type: "popup",
+      width: 400,
+      height: 320,
+      allowScriptsToClose: true,
+      titlePreface: "Send to qBittorrent — ",
+    });
+  } catch (e) {
+    console.error("Send to qBittorrent: category prompt failed", e);
+    return null;                                  // no prompt => no add
+  }
+  return new Promise((resolve) => {
+    pendingAdds.set(id, { resolve, windowId: win.id });
+    // Guard the sliver where the window is closed before we registered it.
+    browser.windows.get(win.id).catch(() => {
+      if (pendingAdds.delete(id)) resolve(null);
+    });
+  });
+}
+
+// Window closed without submitting => cancel that add.
+browser.windows.onRemoved.addListener((windowId) => {
+  for (const [id, pending] of pendingAdds) {
+    if (pending.windowId === windowId) {
+      pendingAdds.delete(id);
+      pending.resolve(null);
+    }
+  }
+});
+
 // --- Infohash: the only reliable success signal. qBit's /torrents/add returns
 // HTTP 200 for nearly everything (duplicates, even non-torrent payloads), so we
 // derive the torrent's v1 infohash and ask qBit whether it's actually present. ---
@@ -167,14 +238,14 @@ async function addAndVerify(url, hash, doAdd) {
   else notifyResult(false, `qBittorrent rejected it (${resp ? resp.status : "no response"})`);
 }
 
-async function addTorrent(urls, credentials) {
+async function addTorrent(urls, credentials, category) {
     const { url } = credentials;
     try {
       const hash = magnetHash(urls);
       await addAndVerify(url, hash, () =>
         fetch(`${url}/api/v2/torrents/add`, {
           method: "POST",
-          body: new URLSearchParams({ urls }),
+          body: new URLSearchParams(category ? { urls, category } : { urls }),
         })
       );
     } catch (e) {
@@ -224,9 +295,11 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "sendToQbit") {
     if (info.linkUrl && info.linkUrl.startsWith("magnet:")) {
       // Magnets can't be fetched — hand the URI to qBittorrent directly.
+      const category = await askCategory(info.linkUrl);
+      if (category === null) return notifyResult(false, "Cancelled — nothing sent");
       const credentials = await getCredentials();
       await login();
-      addTorrent(info.linkUrl, credentials);
+      addTorrent(info.linkUrl, credentials, category);
     } else {
       // http(s) .torrent link: fetch it with the page's cookies and upload the
       // file, so login/passkey-gated links work (qBit fetching the bare URL
@@ -238,9 +311,16 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
 
 browser.storage.onChanged.addListener(async (changes, areaName) => {
   if (areaName === "local" && changes.magnetLink) {
+    // leftclicksend.js stores { href, nonce } so the SAME magnet re-fires after
+    // a cancel; tolerate the bare string an older loaded content script sends.
+    const value = changes.magnetLink.newValue;
+    const magnet = typeof value === "string" ? value : value && value.href;
+    if (!magnet) return;
+    const category = await askCategory(magnet);
+    if (category === null) return notifyResult(false, "Cancelled — nothing sent");
     const credentials = await getCredentials();
     await login();
-    addTorrent(changes.magnetLink.newValue, credentials)
+    addTorrent(magnet, credentials, category);
   }
 });
 
@@ -257,6 +337,21 @@ browser.runtime.onMessage.addListener(async (message) => {
     if (response !== 'Ok.') {
       await regularLogin(tabId)
     }
+  }
+  if (message.action === "qbCategories") {
+    try {
+      return { ok: true, categories: await getCategories() };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  }
+  if (message.action === "qbPickerSubmit") {
+    const pending = pendingAdds.get(message.id);
+    if (pending) {
+      pendingAdds.delete(message.id);
+      pending.resolve(message.category);
+    }
+    return { ok: true };
   }
 });
 
@@ -290,15 +385,19 @@ function looksLikeTorrent(details) {
       || /\.torrent\b/.test(cd);
 }
 
-async function addTorrentFile(blob, credentials) {
+async function addTorrentFile(blob, credentials, category) {
   const { url } = credentials;
   const form = new FormData();
   form.append("torrents", blob, "download.torrent");
+  if (category) form.append("category", category);
   return fetch(`${url}/api/v2/torrents/add`, { method: "POST", body: form });
 }
 
 async function sendUrlToQbit(torrentUrl) {
   try {
+    // Ask BEFORE fetching, so a cancel costs nothing and touches no tracker.
+    const category = await askCategory(torrentUrl);
+    if (category === null) return notifyResult(false, "Cancelled — nothing sent");
     const credentials = await getCredentials();
     const { url } = credentials;
     // Attempt login for the SID cookie, but don't gate on it — qBit may have
@@ -310,7 +409,7 @@ async function sendUrlToQbit(torrentUrl) {
     const res = await fetch(torrentUrl, { credentials: "include" });
     const blob = await res.blob();
     const hash = await torrentFileHash(blob);   // null if not a valid .torrent (e.g. an HTML login page)
-    await addAndVerify(url, hash, () => addTorrentFile(blob, credentials));
+    await addAndVerify(url, hash, () => addTorrentFile(blob, credentials, category));
   } catch (e) {
     console.error("Send to qBittorrent: send failed", e);
     notifyResult(false, "Can't reach qBittorrent");

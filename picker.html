@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Category</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 14px;
+      margin: 0;
+      font-size: 14px;
+    }
+    h3 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+    }
+    #target {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 12px;
+      opacity: 0.75;
+      word-break: break-all;
+      max-height: 44px;
+      overflow: hidden;
+    }
+    select, input[type="text"] {
+      width: 100%;
+      padding: 7px;
+      font-size: 14px;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-bottom: 6px;
+    }
+    #savepath {
+      display: block;
+      min-height: 15px;
+      margin-bottom: 12px;
+      font-size: 11px;
+      opacity: 0.65;
+      word-break: break-all;
+    }
+    #error {
+      display: none;
+      margin-bottom: 8px;
+      color: #b91c1c;
+      font-size: 12px;
+    }
+    .buttons {
+      display: flex;
+      gap: 8px;
+    }
+    button {
+      flex: 1;
+      padding: 9px;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .dark-mode-body {
+      background-color: black;
+      color: white;
+    }
+    .dark-mode-others {
+      background-color: #3C3C4399;
+      color: white;
+    }
+    .dark-mode-body #error {
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+  <h3>Send to qBittorrent</h3>
+  <span id="target"></span>
+  <div id="error"></div>
+  <select id="category"></select>
+  <input type="text" id="categoryText" placeholder="Category name" style="display: none;">
+  <span id="savepath"></span>
+  <div class="buttons">
+    <button id="add" type="button">Add</button>
+    <button id="cancel" type="button">Cancel</button>
+  </div>
+  <script src="picker.js"></script>
+</body>
+</html>
