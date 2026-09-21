@@ -1,7 +1,7 @@
 # send-to-qbittorrent — Reference
 
-<!-- Repo-specific slice. Shared context, all HARD STOPS, and the master to-do
-     list live in the homelab-reference repo (homelab-reference.md). -->
+<!-- Repo-specific slice. Shared context and all HARD STOPS live in the homelab-reference repo
+     (homelab-reference.md); the to-do list is its todo.md. -->
 
 > **Central doc** — `homelab-reference/homelab-reference.md` holds everything shared. This file is only the
 > browser extension's state. The qBittorrent side — categories, qui rules #6–#10, the on-add hook — lives in
