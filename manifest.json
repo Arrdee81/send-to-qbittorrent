@@ -1,12 +1,17 @@
 {
   "manifest_version": 2,
-  "name": "Send to qBittorrent",
-  "version": "1.7.0",
-  "description": "Send torrent/magnet links to qBittorrent from the right-click context menu",
-  "author": "https://github.com/frogmech",
+  "name": "Qbit Sender",
+  "version": "1.9.0",
+  "description": "Send torrent and magnet links to qBittorrent, choosing the category for every add. Fork of Send to qBittorrent by frogmech.",
+  "author": "https://github.com/Arrdee81",
   "browser_specific_settings": {
     "gecko": {
-      "id": "send-to-qbittorrent@arrdee81"
+      "id": "qbit-sender@arrdee81",
+      "data_collection_permissions": {
+        "required": [
+          "authenticationInfo"
+        ]
+      }
     }
   },
   "permissions": [
