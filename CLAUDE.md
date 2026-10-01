@@ -1,1 +1,1 @@
-../homelab-reference/CLAUDE.md
+../coordinator/CLAUDE.md
