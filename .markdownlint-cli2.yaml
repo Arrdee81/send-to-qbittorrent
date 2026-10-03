@@ -1,0 +1,28 @@
+# Shared markdownlint-cli2 config for the media repos (staged 2026-10-03; copied unchanged from the utility repos' config, the counts below were measured there 2026-10-02).
+# Starts from markdownlint's defaults; relaxes only what our reference sheets
+# and briefs use on purpose. Counts measured 2026-10-02 over the 43 tracked *.md
+# in the 13 repos.
+config:
+  default: true
+
+  # MD013 line-length: 2022 lines exceed 80 chars. Sheets are written one
+  # sentence or one rule per line and read in editors that wrap; hard-wrapping
+  # would make every diff noisy. Off.
+  MD013: false
+
+  # MD060 table-column-style (markdownlint 0.38+): our tables are compact
+  # (`| a | b |` without padded columns); padding them would rewrite every table
+  # whenever a cell grows. Off.
+  MD060: false
+
+  # MD022 blanks-around-headings and MD032 blanks-around-lists: 228 of the 243
+  # findings in the 2026-10-02 dry-run; our sheets put headings and lists
+  # without blank lines around them; not worth churning. Coordinator ruling
+  # 2026-10-02. Off.
+  MD022: false
+  MD032: false
+
+  # Not relaxed, on purpose (measured, no reason yet): MD024 duplicate headings
+  # (0 found), MD041 first line H1 (all 43 start with `# `), MD033 inline HTML
+  # (the 96 `<...>` hits are mostly placeholders in code spans; the real run
+  # decides).

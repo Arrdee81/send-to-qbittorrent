@@ -1,0 +1,37 @@
+# Shared yamllint config for the media repos (staged 2026-10-03; copied unchanged from the utility repos' config, the counts below were measured there 2026-10-02).
+# Starts from yamllint's `default` and relaxes only what fights our compose and
+# ansible style. Counts measured 2026-10-02 over the 67 tracked *.yml/*.yaml in
+# the 13 repos.
+extends: default
+
+rules:
+  # Only 17 of 67 files open with `---`; compose files never do and Compose
+  # does not need it. Requiring it would fail 50 files for no defect.
+  document-start: disable
+
+  # 844 lines exceed 80 chars (35 exceed 120): image refs with digests, long
+  # traefik labels and command lines that cannot be wrapped without changing
+  # meaning. Kept as a warning at 160 so it shows but does not fail the hook.
+  line-length:
+    max: 160
+    level: warning
+
+  # GitHub workflow files use the `on:` key, which the default `truthy` rule
+  # flags as a key. Values are still checked (0 non-true/false values measured).
+  truthy:
+    check-keys: false
+
+  # Compose healthchecks use flow lists like [ "CMD", "x" ]; allow one space
+  # inside brackets/braces either way rather than force a rewrite.
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # All 240 measured block sequences are indented under their key; `consistent`
+  # accepts that and still rejects mixing styles within a file.
+  indentation:
+    spaces: consistent
+    indent-sequences: consistent
