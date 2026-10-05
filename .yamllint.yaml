@@ -1,4 +1,4 @@
-# Shared yamllint config for the media repos (staged 2026-10-03; copied unchanged from the utility repos' config, the counts below were measured there 2026-10-02).
+# Shared yamllint config for the media repos (staged 2026-10-05; copied unchanged from the utility repos' config, the counts below were measured there 2026-10-02).
 # Starts from yamllint's `default` and relaxes only what fights our compose and
 # ansible style. Counts measured 2026-10-02 over the 67 tracked *.yml/*.yaml in
 # the 13 repos.
